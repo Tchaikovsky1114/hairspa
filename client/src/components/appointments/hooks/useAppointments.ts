@@ -1,7 +1,8 @@
 // @ts-nocheck
 import dayjs from 'dayjs';
-import { Dispatch, SetStateAction, useState } from 'react';
-
+import { Dispatch, SetStateAction, useState,useEffect } from 'react';
+import { useQuery, useQueryClient } from 'react-query'
+import { queryClient } from 'react-query/queryClient';
 import { axiosInstance } from '../../../axiosInstance';
 import { queryKeys } from '../../../react-query/constants';
 import { useUser } from '../../user/hooks/useUser';
@@ -14,6 +15,8 @@ async function getAppointments(
   year: string,
   month: string,
 ): Promise<AppointmentDateMap> {
+  // baseUrl - constant로 지정 - config<AxiosRequestConfig>로 지정 - axios.create로 해당 config에 대한 instance 생성
+  // http request 요청
   const { data } = await axiosInstance.get(`/appointments/${year}/${month}`);
   return data;
 }
@@ -27,52 +30,54 @@ interface UseAppointments {
   setShowAll: Dispatch<SetStateAction<boolean>>;
 }
 
-// The purpose of this hook:
-//   1. track the current month/year (aka monthYear) selected by the user
-//     1a. provide a way to update state
-//   2. return the appointments for that particular monthYear
-//     2a. return in AppointmentDateMap format (appointment arrays indexed by day of month)
-//     2b. prefetch the appointments for adjacent monthYears
-//   3. track the state of the filter (all appointments / available appointments)
-//     3a. return the only the applicable appointments for the current monthYear
+// useAppointments의 목적.
+//   1. 사용자에 의해 선택된 년/월을 추적한다.
+//     a. 컴포넌트가 훅에 변경사항을 알리는 방법이 존재해야 한다.
+//   2. 사용자가 선택한 년/월에 대한 예약들을 반환해야 한다.
+//     a. AppointmentDateMap 형식에 맞게 반환해야 한다. (appointment arrays indexed by day of month)
+//     b. 전월, 익월에 대한 데이터를 prefetch한다.
+//   3. 모든 예약 / 예약 가능한 날짜를 추적해야 한다.
+//     a. return the only the applicable appointments for the current monthYear
 export function useAppointments(): UseAppointments {
-  /** ****************** START 1: monthYear state *********************** */
-  // get the monthYear for the current date (for default monthYear state)
   const currentMonthYear = getMonthYearDetails(dayjs());
-
-  // state to track current monthYear chosen by user
-  // state value is returned in hook return object
   const [monthYear, setMonthYear] = useState(currentMonthYear);
+  
+  const queryClient = useQueryClient();
+  
+  useEffect(() => {
+    const nextMonthYear = getNewMonthYear(monthYear,1);
+    queryClient.prefetchQuery(
+      [queryKeys.appointments,nextMonthYear.year,nextMonthYear.month],
+      () => getAppointments(nextMonthYear.year,nextMonthYear.month)
+    )
+  }, [queryClient,monthYear]);
 
-  // setter to update monthYear obj in state when user changes month in view,
-  // returned in hook return object
+
+  
+
+
+  
+
   function updateMonthYear(monthIncrement: number): void {
     setMonthYear((prevData) => getNewMonthYear(prevData, monthIncrement));
   }
-  /** ****************** END 1: monthYear state ************************* */
-  /** ****************** START 2: filter appointments  ****************** */
-  // State and functions for filtering appointments to show all or only available
+
   const [showAll, setShowAll] = useState(false);
 
-  // We will need imported function getAvailableAppointments here
-  // We need the user to pass to getAvailableAppointments so we can show
-  //   appointments that the logged-in user has reserved (in white)
   const { user } = useUser();
 
-  /** ****************** END 2: filter appointments  ******************** */
-  /** ****************** START 3: useQuery  ***************************** */
-  // useQuery call for appointments for the current monthYear
+  const fallback = [];
 
-  // TODO: update with useQuery!
-  // Notes:
-  //    1. appointments is an AppointmentDateMap (object with days of month
-  //       as properties, and arrays of appointments for that day as values)
-  //
-  //    2. The getAppointments query function needs monthYear.year and
-  //       monthYear.month
-  const appointments = {};
-
-  /** ****************** END 3: useQuery  ******************************* */
-
+  
+  
+  // 모든 요청에 동일한 키를 사용한다면, state의 값이 달라져도 새로운 요청을 하지 않는다.
+  // => 쿼리 데이터가 stale 상태이지만, refetch-trigger할 대상이 없다.
+  const { data: appointments = fallback } = useQuery(
+    
+   [queryKeys.appointments,monthYear.year, monthYear.month],
+    () => getAppointments(monthYear.year, monthYear.month
+  ))
+  
+  
   return { appointments, monthYear, updateMonthYear, showAll, setShowAll };
 }

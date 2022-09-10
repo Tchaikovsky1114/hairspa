@@ -1,6 +1,6 @@
 import type { Treatment } from '../../../../../shared/types';
 import { axiosInstance } from '../../../axiosInstance';
-import { useQuery } from 'react-query';
+import { useQuery,useQueryClient } from 'react-query';
 import { queryKeys } from '../../../react-query/constants';
 
 
@@ -14,4 +14,9 @@ export function useTreatments(): Treatment[] {
   const fallback = [];
   const { data = fallback } = useQuery(queryKeys.treatments, getTreatments)
   return data
+}
+
+export function usePrefetchTreatments(): void {
+  const queryClient = useQueryClient();
+  queryClient.prefetchQuery(queryKeys.treatments, getTreatments);
 }
