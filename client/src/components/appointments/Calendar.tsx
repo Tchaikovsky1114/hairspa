@@ -25,7 +25,11 @@ export function Calendar(): ReactElement {
     showAll,
     setShowAll,
   } = useAppointments();
-
+  
+  const checkBoxSelectHandler = () => {
+    console.log(showAll)
+    setShowAll(prev => !prev)
+  }
   return (
     <Box>
       <HStack mt={10} spacing={8} justify="center">
@@ -35,26 +39,30 @@ export function Calendar(): ReactElement {
           icon={<TiArrowLeftThick />}
           isDisabled={monthYear.startDate < currentDate}
         />
+
+
         <Heading minW="40%" textAlign="center">
           {monthYear.monthName} {monthYear.year}
         </Heading>
+
         <IconButton
           aria-label="next month"
           onClick={() => updateMonthYear(1)}
           icon={<TiArrowRightThick />}
         />
+
         <Checkbox
           variant="flushed"
           width="48"
           position="absolute"
           right="10px"
           checked={!showAll}
-          defaultIsChecked
-          onChange={() => setShowAll((prevValue) => !prevValue)}
+          onChange={checkBoxSelectHandler}
         >
           Only show available
         </Checkbox>
       </HStack>
+
       <Grid templateColumns="repeat(7, 1fr)" gap={4} my={5} mx={10}>
         {/* first day needs a grid column */}
         <DateBox

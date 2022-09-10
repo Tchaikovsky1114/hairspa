@@ -1,6 +1,6 @@
 // @ts-nocheck
 import dayjs from 'dayjs';
-import { Dispatch, SetStateAction, useState,useEffect } from 'react';
+import { Dispatch, SetStateAction, useState,useEffect,useCallback } from 'react';
 import { useQuery, useQueryClient } from 'react-query'
 import { queryClient } from 'react-query/queryClient';
 import { axiosInstance } from '../../../axiosInstance';
@@ -41,9 +41,9 @@ interface UseAppointments {
 export function useAppointments(): UseAppointments {
   const currentMonthYear = getMonthYearDetails(dayjs());
   const [monthYear, setMonthYear] = useState(currentMonthYear);
-  
+  const [showAll, setShowAll] = useState(false);
   const queryClient = useQueryClient();
-  
+
   useEffect(() => {
     const nextMonthYear = getNewMonthYear(monthYear,1);
     queryClient.prefetchQuery(
@@ -52,32 +52,30 @@ export function useAppointments(): UseAppointments {
     )
   }, [queryClient,monthYear]);
 
-
-  
-
-
-  
-
   function updateMonthYear(monthIncrement: number): void {
     setMonthYear((prevData) => getNewMonthYear(prevData, monthIncrement));
   }
 
-  const [showAll, setShowAll] = useState(false);
+  
 
   const { user } = useUser();
 
+  const selectFn = useCallback((data) => getAvailableAppointments(data,user),[user]);
+
+  // placeholder data
   const fallback = [];
 
-  
-  
   // 모든 요청에 동일한 키를 사용한다면, state의 값이 달라져도 새로운 요청을 하지 않는다.
   // => 쿼리 데이터가 stale 상태이지만, refetch-trigger할 대상이 없다.
   const { data: appointments = fallback } = useQuery(
-    
-   [queryKeys.appointments,monthYear.year, monthYear.month],
-    () => getAppointments(monthYear.year, monthYear.month
+    [queryKeys.appointments,monthYear.year, monthYear.month],
+    () => getAppointments(monthYear.year, monthYear.month,
+      {
+        select: showAll ? undefined : selectFn
+      }
   ))
-  
-  
   return { appointments, monthYear, updateMonthYear, showAll, setShowAll };
 }
+
+
+
